@@ -8,7 +8,7 @@ const cols = ['#', 'Name', 'Date', 'Amount', 'Status', 'Actions']
 
 export const NAV = [
   { section: 'OVERVIEW', items: [
-    { label: 'Dashboard', icon: BarChart, path: '/', custom: true },
+    { label: 'Dashboard', icon: BarChart, path: '/dashboard', custom: true },
   ] },
   { section: 'BUSINESS', items: [
     { key: 'sales', label: 'Sales', icon: Cart, title: 'Sales', sub: 'Manage invoices, quotes, and sales orders.', children: [
