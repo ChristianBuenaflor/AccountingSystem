@@ -25,6 +25,23 @@ export default function AlphalistPage() {
     catch (e) { setMsg({ variant: 'danger', text: errorMessage(e) }) }
   }
 
+  // Choose the Alphalist folder when it was not found (Desktop, moved install...).
+  const [choosing, setChoosing] = useState(false)
+  const [folder, setFolder] = useState('')
+  const [saving, setSaving] = useState(false)
+  const openChooser = () => { setFolder(s?.path || 'C:\\BIRALPHA74'); setChoosing(true) }
+  const saveFolder = async (e) => {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      await alphalistApi.setPath(folder)
+      setMsg({ variant: 'success', text: `Using Alphalist folder ${folder}.` })
+      setChoosing(false)
+      load()
+    } catch (err) { setMsg({ variant: 'danger', text: errorMessage(err) }) }
+    finally { setSaving(false) }
+  }
+
   // Upload a .DAT into Alphalist: preview what it would do, then confirm.
   const [file, setFile] = useState(null)
   const [plan, setPlan] = useState(null)
@@ -49,11 +66,23 @@ export default function AlphalistPage() {
           <div className="d-flex gap-3 align-items-center flex-wrap">
             <strong>{s.path}</strong>
             <Badge bg={s.found ? 'success' : 'danger'}>{s.found ? 'Found' : 'Not found'}</Badge>
+            {!s.found && !choosing && <Button size="sm" className="btn-fp" onClick={openChooser}>Choose folder…</Button>}
             {s.found && <Badge bg={s.locked ? 'warning' : 'secondary'} text={s.locked ? 'dark' : undefined}>{s.locked ? 'Open (locked)' : 'Closed'}</Badge>}
             {s.agent && <span className="fp-sub">Registered agent: {s.agent.name ?? s.agent.tin ?? JSON.stringify(s.agent)} ({s.agent.tin}-{s.agent.branch_code})</span>}
             {s.agent && <Button size="sm" variant="outline-danger" disabled={s.locked} onClick={removeAgent}>Remove agent from Alphalist</Button>}
           </div>
           {s.error && <Alert variant="warning" className="mt-3 mb-0">{s.error}</Alert>}
+          {!s.found && choosing && (
+            <Form onSubmit={saveFolder} className="mt-3">
+              <Form.Label className="small fw-semibold">Alphalist folder on this PC</Form.Label>
+              <div className="d-flex gap-2 flex-wrap">
+                <Form.Control value={folder} onChange={(e) => setFolder(e.target.value)} placeholder="C:\BIRALPHA74" disabled={saving} style={{ maxWidth: 420 }} />
+                <Button type="submit" className="btn-fp" size="sm" disabled={saving || !folder.trim()}>Use this folder</Button>
+                <Button variant="light" size="sm" disabled={saving} onClick={() => setChoosing(false)}>Cancel</Button>
+              </div>
+              <div className="fp-sub mt-2">Example: <code>C:\BIRALPHA74</code> or <code>C:\Users\you\Desktop\BIRALPHA74</code>. Checked before anything is saved.</div>
+            </Form>
+          )}
         </div>
       )}
       <h5 className="mt-4">Upload a DAT into Alphalist</h5>

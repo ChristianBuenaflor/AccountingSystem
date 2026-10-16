@@ -130,6 +130,7 @@ export const annualApi = {
 
 // ---------------------------------------------------------------- BIR Alphalist on this PC
 export const alphalistApi = {
+  setPath: (path) => data(api.post('/alphalist/path', { path })).then((d) => d.alphalist),
   // -> { status, backups: [{name, created(unix)}], syncs }
   overview: async () => {
     const [st, backups, syncs] = await Promise.all([
