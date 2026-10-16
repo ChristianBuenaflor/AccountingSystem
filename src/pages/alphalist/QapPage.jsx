@@ -61,15 +61,15 @@ export default function QapPage() {
 
   const startEdit = (e) => setEdit({ ...e.payee, ...e, id: e.id })
   const remove = async (e) => {
-    if (!window.confirm('Delete this line?')) return
+    if (!window.confirm('Remove this line? (It is archived and left out of DAT files and sends.)')) return
     try { await qapApi.remove(agentId, e.id); load() } catch (err) { setMsg({ variant: 'danger', text: errorMessage(err) }) }
   }
   const showPreview = () => qapApi.preview(agentId, period).then(setPreview).catch((e) => setMsg({ variant: 'danger', text: errorMessage(e) }))
   const send = async () => {
     if (!window.confirm('Write these lines into BIR Alphalist? Alphalist must be closed. A backup is taken first.')) return
     try {
-      const { log } = await alphalistApi.send(agentId, { form: period.form, year: period.year, quarter: period.quarter })
-      setMsg({ variant: 'success', text: `Sent ${log.rows_added} line(s) to BIR Alphalist${log.rows_replaced ? ` (replaced ${log.rows_replaced})` : ''}. Open Alphalist and pick the same return period.` })
+      const { message, where } = await alphalistApi.send(agentId, { form: period.form, year: period.year, quarter: period.quarter })
+      setMsg({ variant: 'success', text: `${message} In Alphalist: ${where}.` })
       load()
     } catch (e) { setMsg({ variant: 'danger', text: errorMessage(e) }) }
   }
@@ -102,10 +102,10 @@ export default function QapPage() {
         <Form.Control type="number" style={{ width: 100 }} value={period.year} onChange={(e) => set('year', Number(e.target.value))} />
         <div className="ms-auto d-flex gap-2 flex-wrap">
           <input ref={csvRef} type="file" accept=".csv" hidden onChange={importCsv} />
-          <Button variant="light" href={qapApi.templateUrl}>CSV template</Button>
+          <Button variant="light" onClick={() => qapApi.downloadTemplate().catch((e) => setMsg({ variant: 'danger', text: errorMessage(e) }))}>CSV template</Button>
           <Button variant="light" disabled={!agentId} onClick={() => csvRef.current.click()}>Import CSV</Button>
           <Button variant="light" disabled={!agentId} onClick={showPreview}>Preview DAT</Button>
-          <Button variant="light" disabled={!agentId} href={agentId ? qapApi.downloadUrl(agentId, period) : undefined}>Download DAT</Button>
+          <Button variant="light" disabled={!agentId} onClick={() => qapApi.download(agentId, period).catch((e) => setMsg({ variant: 'danger', text: errorMessage(e) }))}>Download DAT</Button>
           <Button variant="dark" disabled={!agentId} onClick={send}>Send to Alphalist</Button>
           <Button className="btn-fp" disabled={!data} onClick={() => setEdit({ schedule: 'D1', branch_code: '0000', payee_type: 'I' })}><Plus size={20} /> New Line</Button>
         </div>
@@ -140,7 +140,8 @@ export default function QapPage() {
       })}
       {data?.last_sync && <div className="fp-sub">Last sent to Alphalist: {new Date(data.last_sync.created_at).toLocaleString()} ({data.last_sync.rows_added} lines)</div>}
 
-      {edit && fields && <FormModal title={edit.id ? 'Edit line' : 'New line'} fields={fields} initial={edit} onSave={save} onClose={() => setEdit(null)} onBlurField={lookup} />}
+      {edit && fields && <FormModal title={edit.id ? 'Edit line' : 'New line'} fields={fields} initial={edit} onSave={save} onClose={() => setEdit(null)} onBlurField={lookup}
+        onChangeField={(name, v, patch) => name === 'tin' && String(v.tin).replace(/\D/g, '').length === 9 && lookup(name, v, patch)} />}
 
       <Modal show={!!preview} onHide={() => setPreview(null)} size="xl">
         <Modal.Header closeButton><Modal.Title>{preview?.filename}</Modal.Title></Modal.Header>

@@ -33,13 +33,13 @@ export default function AgentsPage() {
 
   const save = (a) => agentsApi.save(a).then(load).catch((e) => { throw new Error(errorMessage(e)) })
   const remove = async (a) => {
-    if (!window.confirm(`Delete ${agentName(a)} and all of its QAP entries?`)) return
+    if (!window.confirm(`Archive ${agentName(a)}? It disappears from the lists; its QAP lines are kept.`)) return
     try { await agentsApi.remove(a.id); load() } catch (e) { setError(errorMessage(e)) }
   }
 
   return (
     <>
-      <PageHeader title="Withholding Agents" sub="Employers who file QAP 1601-EQ/FQ and 1604-F.">
+      <PageHeader title="Withholding Agents" sub="Employers who file QAP 1601-EQ/FQ, 1604-E and 1604-F.">
         <Button className="btn-fp" onClick={() => setEdit({ branch_code: '0000', classification: 'N', category: 'P' })}><Plus size={20} /> New Agent</Button>
       </PageHeader>
       {error && <Alert variant="danger" dismissible onClose={() => setError('')}>{error}</Alert>}
@@ -53,7 +53,7 @@ export default function AgentsPage() {
                 <td>{i + 1}</td><td>{a.tin}-{a.branch_code}</td><td>{agentName(a)}</td><td>{a.rdo_code}</td><td>{a.qap_entries_count}</td>
                 <td className="text-nowrap">
                   <Button size="sm" variant="light" onClick={() => setEdit(a)}>Edit</Button>{' '}
-                  <Button size="sm" variant="outline-danger" onClick={() => remove(a)}>Delete</Button>
+                  <Button size="sm" variant="outline-danger" onClick={() => remove(a)}>Archive</Button>
                 </td>
               </tr>
             ))}

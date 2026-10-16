@@ -90,7 +90,8 @@ export default function App() {
         <Route path="/alphalist/agents" element={<AgentsPage />} />
         <Route path="/alphalist/payees" element={<PayeesPage />} />
         <Route path="/alphalist/qap" element={<QapPage />} />
-        <Route path="/alphalist/1604f" element={<Annual1604FPage />} />
+        <Route path="/alphalist/1604f" element={<Annual1604FPage form="1604F" />} />
+        <Route path="/alphalist/1604e" element={<Annual1604FPage key="1604E" form="1604E" />} />
         <Route path="/alphalist/tools/analyze" element={<AnalyzePage />} />
         <Route path="/alphalist/tools/compare" element={<ComparePage />} />
         <Route path="/alphalist/tools/spec" element={<SpecPage />} />

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Alert, Badge, Button, Table } from 'react-bootstrap'
+import { Alert, Badge, Button, Form, Table } from 'react-bootstrap'
 import { alphalistApi } from '../../lib/api/alphalist'
 import { errorMessage } from '../../lib/api/client'
 import PageHeader from '../../components/PageHeader'
@@ -18,6 +18,28 @@ export default function AlphalistPage() {
   }
   const s = d?.status
 
+  // Alphalist holds one withholding agent; removing it (and its lines there) lets another agent be sent.
+  const removeAgent = async () => {
+    if (!window.confirm(`Remove ${s.agent.name} (${s.agent.tin}-${s.agent.branch_code}) from BIR Alphalist, with all its lines there? A backup is taken first, so it can be restored.`)) return
+    try { const r = await alphalistApi.removeAgent(); setMsg({ variant: 'success', text: r.message }); load() }
+    catch (e) { setMsg({ variant: 'danger', text: errorMessage(e) }) }
+  }
+
+  // Upload a .DAT into Alphalist: preview what it would do, then confirm.
+  const [file, setFile] = useState(null)
+  const [plan, setPlan] = useState(null)
+  const previewUpload = async (e) => {
+    e.preventDefault(); setPlan(null)
+    try { setPlan(await alphalistApi.uploadPreview(file)) } catch (err) { setMsg({ variant: 'danger', text: errorMessage(err) }) }
+  }
+  const doUpload = async () => {
+    try {
+      const r = await alphalistApi.upload(file)
+      setMsg({ variant: 'success', text: `${r.message} In Alphalist: ${r.open_in_alphalist}.` })
+      setPlan(null); setFile(null); load()
+    } catch (err) { setMsg({ variant: 'danger', text: errorMessage(err) }) }
+  }
+
   return (
     <>
       <PageHeader title="BIR Alphalist" sub="Connection to the Alphalist Data Entry program on this PC, its backups, and send history." />
@@ -28,11 +50,34 @@ export default function AlphalistPage() {
             <strong>{s.path}</strong>
             <Badge bg={s.found ? 'success' : 'danger'}>{s.found ? 'Found' : 'Not found'}</Badge>
             {s.found && <Badge bg={s.locked ? 'warning' : 'secondary'} text={s.locked ? 'dark' : undefined}>{s.locked ? 'Open (locked)' : 'Closed'}</Badge>}
-            {s.agent && <span className="fp-sub">Registered agent: {s.agent.name ?? s.agent.tin ?? JSON.stringify(s.agent)}</span>}
+            {s.agent && <span className="fp-sub">Registered agent: {s.agent.name ?? s.agent.tin ?? JSON.stringify(s.agent)} ({s.agent.tin}-{s.agent.branch_code})</span>}
+            {s.agent && <Button size="sm" variant="outline-danger" disabled={s.locked} onClick={removeAgent}>Remove agent from Alphalist</Button>}
           </div>
           {s.error && <Alert variant="warning" className="mt-3 mb-0">{s.error}</Alert>}
         </div>
       )}
+      <h5 className="mt-4">Upload a DAT into Alphalist</h5>
+      <div className="fp-card p-3 mb-3">
+        <Form onSubmit={previewUpload} className="d-flex gap-3 align-items-end flex-wrap">
+          <div>
+            <Form.Label className="small fw-semibold">QAP 1601-EQ / 1601-FQ, 1604-F or 1604-E file</Form.Label>
+            <Form.Control type="file" accept=".dat,.DAT" onChange={(e) => { setFile(e.target.files[0] || null); setPlan(null) }} />
+          </div>
+          <Button type="submit" variant="light" disabled={!file}>Check file</Button>
+        </Form>
+        <div className="fp-sub mt-2">Only that agent, form and period are replaced in Alphalist; its other data is kept. A backup is taken first.</div>
+        {plan && (
+          <Alert variant={plan.can_upload ? 'info' : 'danger'} className="mt-3 mb-0">
+            <div><strong>{plan.form_type}</strong> · period {plan.return_period} · {plan.withholding_agent.display_name} ({plan.withholding_agent.tin}-{plan.withholding_agent.branch_code})</div>
+            <div>Adds {plan.lines_to_add} line(s) ({Object.entries(plan.lines_by_schedule).map(([k, v]) => `${k}: ${v}`).join(', ')}), replaces {plan.lines_to_replace} older line(s).</div>
+            {plan.agent_action === 'register' && <div>The agent will be registered in Alphalist.</div>}
+            {plan.agent_action === 'conflict' && <div>Alphalist is registered to another agent ({plan.registered_agent?.name}); upload is blocked.</div>}
+            {plan.warnings?.length > 0 && <ul className="mb-0">{plan.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>}
+            {plan.can_upload && <Button variant="dark" size="sm" className="mt-2" onClick={doUpload}>Upload into Alphalist</Button>}
+          </Alert>
+        )}
+      </div>
+
       <h5 className="mt-4">Backups</h5>
       <div className="fp-card mb-4">
         <Table responsive className="mb-0 align-middle">

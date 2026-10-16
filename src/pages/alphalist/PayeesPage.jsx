@@ -31,7 +31,7 @@ export default function PayeesPage() {
 
   const save = (p) => payeesApi.save(p).then(load).catch((e) => { throw new Error(errorMessage(e)) })
   const remove = async (p) => {
-    if (!window.confirm(`Delete ${payeeName(p)}?`)) return
+    if (!window.confirm(`Archive ${payeeName(p)}?`)) return
     try { await payeesApi.remove(p.id); load() } catch (e) { setError(errorMessage(e)) }
   }
 
@@ -52,7 +52,7 @@ export default function PayeesPage() {
                 <td>{p.tin}-{p.branch_code}</td><td>{payeeName(p)}</td><td>{p.payee_type === 'I' ? 'Individual' : 'Non-individual'}</td><td>{p.status_code}</td>
                 <td className="text-nowrap">
                   <Button size="sm" variant="light" onClick={() => setEdit(p)}>Edit</Button>{' '}
-                  <Button size="sm" variant="outline-danger" onClick={() => remove(p)}>Delete</Button>
+                  <Button size="sm" variant="outline-danger" onClick={() => remove(p)}>Archive</Button>
                 </td>
               </tr>
             ))}

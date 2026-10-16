@@ -1,5 +1,5 @@
-// Demo session store: localStorage-backed, node-safe. No backend.
-const KEY = 'fp.auth.v1'
+// Session store for the alphalist-api login (Sanctum bearer token). localStorage-backed, node-safe.
+const KEY = 'fp.auth.v2'
 const mem = new Map()
 const store = () =>
   typeof localStorage !== 'undefined'
@@ -10,24 +10,32 @@ const store = () =>
         removeItem: (k) => mem.delete(k),
       }
 
+/** { token, name, email, username, at } or null */
 export function getSession() {
   try {
     const raw = store().getItem(KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw)
-    if (!parsed || typeof parsed.email !== 'string') return null
+    if (!parsed || typeof parsed.token !== 'string' || !parsed.token) return null
     return parsed
   } catch {
     return null
   }
 }
 
-export function login(email) {
-  const session = { email, name: email.split('@')[0] || email, at: new Date().toISOString() }
+/** Save the { token, user } returned by POST /api/login. */
+export function saveSession({ token, user }) {
+  const session = {
+    token,
+    name: user?.name || user?.username || '',
+    email: user?.email || '',
+    username: user?.username || '',
+    at: new Date().toISOString(),
+  }
   try {
     store().setItem(KEY, JSON.stringify(session))
   } catch {
-    /* quota or unavailable — session lives in memory only */
+    /* quota or unavailable */
   }
   return session
 }

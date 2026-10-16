@@ -52,6 +52,7 @@ export const NAV = [
     { label: 'Withholding Agents', icon: Building, path: '/alphalist/agents', custom: true },
     { label: 'TIN Library', icon: People, path: '/alphalist/payees', custom: true },
     { label: 'QAP Entry', icon: Journals, path: '/alphalist/qap', custom: true },
+    { label: '1604-E Annual', icon: Journals, path: '/alphalist/1604e', custom: true },
     { label: '1604-F Annual', icon: Journals, path: '/alphalist/1604f', custom: true },
     { key: 'dattools', label: 'DAT Tools', icon: Box, title: 'DAT Tools', sub: '', children: [
       { label: 'Analyze DAT', icon: doc, path: '/alphalist/tools/analyze', custom: true },

@@ -2,24 +2,34 @@ import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { Form, Button, Alert } from 'react-bootstrap'
 import { ArrowRight } from 'lucide-react'
-import { getSession, login } from '../../lib/store/auth.js'
+import { getSession } from '../../lib/store/auth.js'
+import { authApi } from '../../lib/api/alphalist.js'
+import { errorMessage } from '../../lib/api/client.js'
 
 const Login = () => {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
 
   if (getSession()) return <Navigate to="/dashboard" replace />
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!email.includes('@') || password.length < 4) {
-      setError('Enter a valid email and a password of 4+ characters (demo mode).')
+    if (!email.trim() || !password) {
+      setError('Enter your email or username and your password.')
       return
     }
-    login(email)
-    navigate('/dashboard', { replace: true })
+    setBusy(true)
+    setError('')
+    try {
+      await authApi.login(email.trim(), password)
+      navigate('/dashboard', { replace: true })
+    } catch (err) {
+      setError(errorMessage(err))
+      setBusy(false)
+    }
   }
 
   return (
@@ -36,19 +46,19 @@ const Login = () => {
         </div>
         <div className="col-md-7 bg-white p-5">
           <h4 className="fw-bold mb-1">Sign in</h4>
-          <p className="text-muted mb-4" style={{ fontSize: '0.85rem' }}>Demo mode — use any email, no real account needed.</p>
+          <p className="text-muted mb-4" style={{ fontSize: '0.85rem' }}>Use your Alphalist API account (email or username).</p>
           {error && <Alert variant="danger" style={{ fontSize: '0.85rem' }}>{error}</Alert>}
           <Form onSubmit={handleSubmit}>
             <Form.Group className="mb-3">
-              <Form.Label>Email</Form.Label>
-              <Form.Control type="text" inputMode="email" placeholder="you@company.com" value={email} onChange={e => setEmail(e.target.value)} />
+              <Form.Label>Email or username</Form.Label>
+              <Form.Control type="text" autoComplete="username" placeholder="you@company.com or admin" value={email} onChange={e => setEmail(e.target.value)} />
             </Form.Group>
             <Form.Group className="mb-4">
               <Form.Label>Password</Form.Label>
-              <Form.Control type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} />
+              <Form.Control type="password" autoComplete="current-password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} />
             </Form.Group>
-            <Button type="submit" className="btn-accent w-100 d-flex align-items-center justify-content-center gap-2">
-              Sign In <ArrowRight size={16} />
+            <Button type="submit" disabled={busy} className="btn-accent w-100 d-flex align-items-center justify-content-center gap-2">
+              {busy ? 'Signing in…' : 'Sign In'} <ArrowRight size={16} />
             </Button>
           </Form>
           <div className="text-center mt-4" style={{ fontSize: '0.8rem' }}>

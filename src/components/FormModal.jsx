@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Alert, Button, Col, Form, Modal, Row } from 'react-bootstrap'
 
 // fields: [{ name, label, type?: 'text'|'select', options?: [[value,label]], show?: (values)=>bool, col?: 3|4|6|12 }]
-export default function FormModal({ title, fields, initial, onSave, onClose, onBlurField }) {
+// onBlurField / onChangeField: (name, values, patch) => void
+export default function FormModal({ title, fields, initial, onSave, onClose, onBlurField, onChangeField }) {
   const [values, setValues] = useState(initial)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -29,7 +30,8 @@ export default function FormModal({ title, fields, initial, onSave, onClose, onB
                     {f.options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                   </Form.Select>
                 ) : (
-                  <Form.Control value={values[f.name] ?? ''} onChange={(e) => patch({ [f.name]: e.target.value })}
+                  <Form.Control value={values[f.name] ?? ''}
+                    onChange={(e) => { patch({ [f.name]: e.target.value }); onChangeField?.(f.name, { ...values, [f.name]: e.target.value }, patch) }}
                     onBlur={() => onBlurField?.(f.name, values, patch)} />
                 )}
               </Col>
