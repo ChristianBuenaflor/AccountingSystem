@@ -1,9 +1,80 @@
 import { useEffect, useState } from 'react'
-import { Alert, Badge, Button, Form, Table } from 'react-bootstrap'
+import { Alert, Badge, Button, Form, Modal, Table } from 'react-bootstrap'
 import { alphalistApi } from '../../lib/api/alphalist'
 import { errorMessage } from '../../lib/api/client'
 import PageHeader from '../../components/PageHeader'
 import { agentName } from '../../components/AgentPicker'
+
+/** Explorer-like popup over the server's own drives (the browser cannot see full C:\ paths). */
+function FolderBrowser({ onPick, onClose }) {
+  const [cur, setCur] = useState({ loading: true })
+  const go = async (dir) => {
+    setCur((c) => ({ ...c, loading: true, error: null }))
+    try {
+      setCur({ data: await alphalistApi.browse(dir) })
+    } catch (e) {
+      setCur({ error: errorMessage(e) })
+    }
+  }
+  useEffect(() => { go(undefined) }, [])
+  const d = cur.data
+
+  return (
+    <Modal show onHide={onClose} size="lg">
+      <Modal.Header closeButton>
+        <Modal.Title className="fs-6">Browse folders on this PC</Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        {cur.loading && <div className="fp-sub">Loading…</div>}
+        {cur.error && (
+          <Alert variant="danger" className="mb-0">
+            {cur.error}
+            <div className="mt-2"><Button size="sm" variant="light" onClick={() => go(undefined)}>Back to This PC</Button></div>
+          </Alert>
+        )}
+        {d && (
+          <>
+            <div className="d-flex gap-2 align-items-center flex-wrap mb-3">
+              <Button size="sm" variant="light" onClick={() => go(undefined)}>This PC</Button>
+              {d.parent && <Button size="sm" variant="light" onClick={() => go(d.parent)}>Up</Button>}
+              <strong className="ms-1">{d.path || 'This PC'}</strong>
+            </div>
+            {!d.path && (
+              <div className="d-flex gap-2 flex-wrap mb-3">
+                {d.drives.map((drive) => (
+                  <Button key={drive} size="sm" variant="light" onClick={() => go(drive)}>{drive}</Button>
+                ))}
+                {d.desktop && <Button size="sm" variant="light" onClick={() => go(d.desktop)}>Desktop</Button>}
+              </div>
+            )}
+            {d.note && <Alert variant="warning">{d.note}</Alert>}
+            {d.path && d.dirs.length === 0 && !d.note && <div className="fp-sub">No subfolders.</div>}
+            {d.dirs.length > 0 && (
+              <Table hover responsive className="mb-0 align-middle">
+                <tbody>
+                  {d.dirs.map((dir) => (
+                    <tr key={dir.path}>
+                      <td>
+                        <Button size="sm" variant="link" className="p-0 text-start" onClick={() => go(dir.path)}>{dir.name}</Button>
+                        {dir.hasAlphalist && <Badge bg="success" className="ms-2">Alphalist here</Badge>}
+                      </td>
+                      <td className="text-end">
+                        <Button size="sm" variant="light" onClick={() => onPick(dir.path)}>Choose</Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            )}
+          </>
+        )}
+      </Modal.Body>
+      <Modal.Footer>
+        <Button size="sm" variant="light" onClick={onClose}>Close</Button>
+      </Modal.Footer>
+    </Modal>
+  )
+}
 
 export default function AlphalistPage() {
   const [d, setD] = useState(null)
@@ -42,6 +113,9 @@ export default function AlphalistPage() {
     finally { setSaving(false) }
   }
 
+  // Explorer-like folder browser (server-side: the browser cannot see full C:\ paths).
+  const [browsing, setBrowsing] = useState(false)
+
   // Upload a .DAT into Alphalist: preview what it would do, then confirm.
   const [file, setFile] = useState(null)
   const [plan, setPlan] = useState(null)
@@ -77,6 +151,7 @@ export default function AlphalistPage() {
               <Form.Label className="small fw-semibold">Alphalist folder on this PC</Form.Label>
               <div className="d-flex gap-2 flex-wrap">
                 <Form.Control value={folder} onChange={(e) => setFolder(e.target.value)} placeholder="C:\BIRALPHA74" disabled={saving} style={{ maxWidth: 420 }} />
+                <Button variant="light" size="sm" disabled={saving} onClick={() => setBrowsing(true)}>Browse…</Button>
                 <Button type="submit" className="btn-fp" size="sm" disabled={saving || !folder.trim()}>Use this folder</Button>
                 <Button variant="light" size="sm" disabled={saving} onClick={() => setChoosing(false)}>Cancel</Button>
               </div>
@@ -84,6 +159,12 @@ export default function AlphalistPage() {
             </Form>
           )}
         </div>
+      )}
+      {browsing && (
+        <FolderBrowser
+          onPick={(path) => { setFolder(path); setBrowsing(false) }}
+          onClose={() => setBrowsing(false)}
+        />
       )}
       <h5 className="mt-4">Upload a DAT into Alphalist</h5>
       <div className="fp-card p-3 mb-3">
