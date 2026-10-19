@@ -47,9 +47,9 @@ const CreditCardReconciliation = () => {
                 <td>{i + 1}</td>
                 <td className="fw-semibold"><CreditCard size={14} className="me-2 text-muted" />{r.account_name}</td>
                 <td>{r.statement_date ? new Date(r.statement_date).toLocaleDateString() : '—'}</td>
-                <td className="fw-semibold">${parseFloat(r.statement_balance || 0).toLocaleString()}</td>
-                <td className="fw-semibold">${parseFloat(r.book_balance || 0).toLocaleString()}</td>
-                <td className={Math.abs(parseFloat(r.difference)) < 0.01 ? 'text-success fw-semibold' : 'text-danger fw-semibold'}>${parseFloat(r.difference || 0).toLocaleString()}</td>
+                <td className="fw-semibold">₱{parseFloat(r.statement_balance || 0).toLocaleString()}</td>
+                <td className="fw-semibold">₱{parseFloat(r.book_balance || 0).toLocaleString()}</td>
+                <td className={Math.abs(parseFloat(r.difference)) < 0.01 ? 'text-success fw-semibold' : 'text-danger fw-semibold'}>₱{parseFloat(r.difference || 0).toLocaleString()}</td>
                 <td><Badge bg={r.status === 'reconciled' ? 'success' : 'warning'} text={r.status === 'reconciled' ? undefined : 'dark'}>{r.status}</Badge></td>
                 <td><Button variant="link" className="p-1" onClick={() => handleEdit(r)}><Pencil size={16} /></Button><Button variant="link" className="p-1 text-danger" onClick={() => handleDelete(r.id)}><Trash2 size={16} /></Button></td>
               </tr>

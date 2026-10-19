@@ -9,11 +9,14 @@ import PayeesPage from './pages/alphalist/PayeesPage'
 import QapPage from './pages/alphalist/QapPage'
 import AlphalistPage from './pages/alphalist/AlphalistPage'
 import Annual1604FPage from './pages/alphalist/Annual1604FPage'
-import { AnalyzePage, ComparePage, SpecPage } from './pages/alphalist/DatToolPages'
+import OtherFormsPage from './pages/alphalist/OtherFormsPage'
+import FilingStatusPage from './pages/alphalist/FilingStatusPage'
+import { AnalyzePage, ComparePage, SpecPage, ValidatePage } from './pages/alphalist/DatToolPages'
 import Dashboard from './pages/overview/Dashboard'
 import Sales from './pages/sales/Sales'
 import Quotes from './pages/sales/Quotes'
 import Orders from './pages/sales/Orders'
+import Customers from './pages/sales/Customers'
 import Purchases from './pages/purchases/Purchases'
 import Bills from './pages/purchases/Bills'
 import Suppliers from './pages/purchases/Suppliers'
@@ -63,6 +66,7 @@ export default function App() {
         <Route path="/sales/invoices" element={<Sales />} />
         <Route path="/sales/quotes" element={<Quotes />} />
         <Route path="/sales/orders" element={<Orders />} />
+        <Route path="/sales/customers" element={<Customers />} />
         <Route path="/purchases/orders" element={<Purchases />} />
         <Route path="/purchases/bills" element={<Bills />} />
         <Route path="/purchases/suppliers" element={<Suppliers />} />
@@ -92,10 +96,16 @@ export default function App() {
         <Route path="/alphalist/qap" element={<QapPage />} />
         <Route path="/alphalist/1604f" element={<Annual1604FPage form="1604F" />} />
         <Route path="/alphalist/1604e" element={<Annual1604FPage key="1604E" form="1604E" />} />
+        <Route path="/alphalist/1604c" element={<OtherFormsPage key="ANNUAL" group="ANNUAL" title="1604-C Employees" sub="Alphalist of employees (Schedule 1 and minimum wage earners, Schedule 2). Totals and tax due are computed as Alphalist's screens do." />} />
+        <Route path="/alphalist/map" element={<OtherFormsPage key="MAP" group="MAP" title="MAP 1600-VT / 1600-PT" sub="Monthly alphalist of payees for VAT and percentage tax withheld." />} />
+        <Route path="/alphalist/sawt" element={<OtherFormsPage key="SAWT" group="SAWT" title="SAWT" sub="Summary alphalist of taxes withheld from you, attached to your 1700/1701/1702/2550/2551/2553 return." />} />
+        <Route path="/alphalist/1621" element={<OtherFormsPage key="QAP" group="QAP" title="1621 Estates" sub="Final tax withheld on withdrawals from decedents' deposit accounts (monthly)." />} />
+        <Route path="/alphalist/tools/validate" element={<ValidatePage />} />
         <Route path="/alphalist/tools/analyze" element={<AnalyzePage />} />
         <Route path="/alphalist/tools/compare" element={<ComparePage />} />
         <Route path="/alphalist/tools/spec" element={<SpecPage />} />
         <Route path="/alphalist/sync" element={<AlphalistPage />} />
+        <Route path="/alphalist/status" element={<FilingStatusPage />} />
       </Route>
     </Routes>
   )

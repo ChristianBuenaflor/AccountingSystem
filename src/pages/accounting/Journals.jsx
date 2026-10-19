@@ -54,8 +54,8 @@ const Journals = () => {
                 <td className="fw-semibold"><BookOpen size={14} className="me-2 text-muted" />{e.entry_number}</td>
                 <td>{e.date ? new Date(e.date).toLocaleDateString() : '—'}</td>
                 <td>{e.description || '—'}</td>
-                <td className="fw-semibold text-success">${parseFloat(e.total_debit || 0).toLocaleString()}</td>
-                <td className="fw-semibold text-danger">${parseFloat(e.total_credit || 0).toLocaleString()}</td>
+                <td className="fw-semibold text-success">₱{parseFloat(e.total_debit || 0).toLocaleString()}</td>
+                <td className="fw-semibold text-danger">₱{parseFloat(e.total_credit || 0).toLocaleString()}</td>
                 <td>{statusBadge(e.total_debit, e.total_credit)}</td>
                 <td>
                   <Button variant="link" className="p-1" onClick={() => handleEdit(e)}><Pencil size={16} /></Button>

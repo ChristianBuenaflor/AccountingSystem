@@ -3,6 +3,7 @@ import { Alert, Badge, Button } from 'react-bootstrap'
 import { alphalistApi } from '../lib/api/alphalist'
 import { errorMessage } from '../lib/api/client'
 import { agentName } from './AgentPicker'
+import { confirmDialog } from '../lib/confirm'
 
 const pad4 = (v) => String(v ?? '').padStart(4, '0')
 
@@ -15,7 +16,7 @@ export default function SendPanel({ agent, alphalist, form, year, quarter, label
   const canSend = alphalist.found && !alphalist.locked && (!reg || sameAgent)
 
   const send = async () => {
-    if (!window.confirm(`Send ${label} to BIR Alphalist?\n\nAlphalist's DATA folder is backed up first. Lines Alphalist already has for this agent and period are replaced.`)) return
+    if (!await confirmDialog(`Send ${label} to BIR Alphalist?\n\nAlphalist's DATA folder is backed up first. Lines Alphalist already has for this agent and period are replaced.`)) return
     try {
       const { log, period } = await alphalistApi.send(agent.id, { form, year, ...(quarter ? { quarter } : {}) })
       const shown = form === '1604F' ? `year ${year}` : new Date(period + 'T00:00').toLocaleDateString('en-US', { month: '2-digit', year: 'numeric' })

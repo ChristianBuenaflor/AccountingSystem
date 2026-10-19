@@ -50,8 +50,8 @@ const Services = () => {
                 <td>{i + 1}</td>
                 <td className="fw-semibold"><Wrench size={14} className="me-2 text-muted" />{s.name}</td>
                 <td><Badge bg="light" text="dark" className="border">{s.sku}</Badge></td>
-                <td className="fw-semibold text-success">${parseFloat(s.price || 0).toLocaleString()}</td>
-                <td>${parseFloat(s.cost || 0).toLocaleString()}</td>
+                <td className="fw-semibold text-success">₱{parseFloat(s.price || 0).toLocaleString()}</td>
+                <td>₱{parseFloat(s.cost || 0).toLocaleString()}</td>
                 <td><Badge bg="info">{margin(s)}</Badge></td>
                 <td><Button variant="link" className="p-1" onClick={() => handleEdit(s)}><Pencil size={16} /></Button><Button variant="link" className="p-1 text-danger" onClick={() => handleDelete(s.id)}><Trash2 size={16} /></Button></td>
               </tr>

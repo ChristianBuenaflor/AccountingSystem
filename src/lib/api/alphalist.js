@@ -24,8 +24,8 @@ export const agentsApi = {
 
 // ---------------------------------------------------------------- payees (TIN library)
 export const payeesApi = {
-  list: (q, page = 1) => listOr(api.get('/payees', { params: { search: q || undefined, page, per_page: 50 } }), { payees: [], pagination: { last_page: 1 } })
-    .then((d) => ({ data: d.payees, last_page: d.pagination?.last_page ?? 1 })),
+  list: (q, page = 1) => listOr(api.get('/payees', { params: { search: q || undefined, page, per_page: 20 } }), { payees: [], pagination: { last_page: 1 } })
+    .then((d) => ({ data: d.payees, last_page: d.pagination?.last_page ?? 1, pagination: d.pagination ?? null })),
   save: (p) => data(p.id ? api.post(`/update/payees/${p.id}`, p) : api.post('/create/payees', p)).then((d) => d.payee),
   remove: (id) => api.post(`/payees/${id}/archive`),
   // { tin, branch, agent, form } -> { found, payee, last: { schedule, atc_code, tax_rate } }
@@ -130,6 +130,11 @@ export const annualApi = {
 
 // ---------------------------------------------------------------- BIR Alphalist on this PC
 export const alphalistApi = {
+  status,
+  // body = { form, year, quarter?, month? } -> { form_type, return_period, lines_to_add, lines_by_schedule, lines_to_replace, agent_action, registered_agent, can_send }
+  sendPreview: (agent, body) => data(api.get('/alphalist/send-preview', { params: {
+    withholding_agent_id: agent, form_type: body.form, year: body.year, ...(body.quarter ? { quarter: body.quarter } : {}), ...(body.month ? { month: body.month } : {}),
+  } })).then((d) => d.preview),
   setPath: (path) => data(api.post('/alphalist/path', { path })).then((d) => d.alphalist),
   browse: (dir) => data(api.get('/alphalist/browse', { params: dir ? { dir } : {} })).then((d) => d.browse),
   // -> { status, backups: [{name, created(unix)}], syncs }
@@ -143,7 +148,7 @@ export const alphalistApi = {
   },
   // body = { form, year, quarter? } -> { log, period, where }
   send: (agent, body) => data(api.post('/alphalist/send', {
-    withholding_agent_id: agent, form_type: body.form, year: body.year, ...(body.quarter ? { quarter: body.quarter } : {}),
+    withholding_agent_id: agent, form_type: body.form, year: body.year, ...(body.quarter ? { quarter: body.quarter } : {}), ...(body.month ? { month: body.month } : {}),
   })).then((d) => ({ log: d.sync, period: String(d.sync.return_period).slice(0, 10), where: d.open_in_alphalist, message: d.message })),
   restore: (backup) => data(api.post('/alphalist/restore', { backup })),
   removeAgent: () => data(api.post('/alphalist/remove-agent')),
@@ -157,6 +162,67 @@ export const alphalistApi = {
     body.append('file', file)
     return data(api.post('/alphalist/upload-dat', body))
   },
+}
+
+// ---------------------------------------------------------------- other forms (1604-C, MAP 1600-VT/PT, SAWT, 1621)
+// period = { form, year, month? } (monthly forms need month)
+const formParams = (agent, period) => ({ withholding_agent_id: agent, form_type: period.form, year: period.year, ...(period.month ? { month: period.month } : {}) })
+let formsCache
+export const formsApi = {
+  // -> [{ code, title, frequency, group, schedules: { D1: { title, inputs: [{field,label,type,options}], totals } }, atcs }]
+  list: () => (formsCache ??= data(api.get('/forms')).then((d) => d.forms).catch((e) => { formsCache = null; throw e })),
+  // -> { entries, totals, return_period }
+  get: (agent, period) => data(api.get('/form-entries', { params: formParams(agent, period) }))
+    .then((d) => ({ entries: d.form_entries, totals: d.totals, return_period: d.return_period })),
+  add: (agent, period, body) => data(api.post('/create/form-entries', { ...body, ...formParams(agent, period) })),
+  update: (id, body) => data(api.post(`/update/form-entries/${id}`, body)),
+  remove: (id) => api.post(`/form-entries/${id}/archive`),
+  preview: (agent, period) => data(api.get('/dat/form', { params: formParams(agent, period) })).then((d) => ({ filename: d.dat.filename, lines: d.dat.lines, empty: d.dat.is_empty })),
+  download: (agent, period) => downloadFile('/dat/form/download', formParams(agent, period), 'form.DAT'),
+}
+
+// ---------------------------------------------------------------- BIR validation (BIR's Alphalist Validation module, run on the DAT)
+// period = { form, year, quarter? | month?, variant?, amended?, sheets? } (variant & co: 1604-F's layout choices)
+const validationParams = (agent, p) => ({
+  withholding_agent_id: agent, form_type: p.form, year: p.year,
+  ...(p.quarter ? { quarter: p.quarter } : {}), ...(p.month ? { month: p.month } : {}),
+  ...(p.variant ? { variant: p.variant, amended: p.amended ? 1 : 0, sheets: p.sheets || 0 } : {}),
+})
+export const validationApi = {
+  // -> { passed, errors: [{ line, schedule, message, record }], messages, report, validated_filename, saves_as, line_count, is_empty, return_period }
+  get: (agent, period) => data(api.get('/bir-validation', { params: validationParams(agent, period) })).then((d) => d.validation),
+  // file: 'validated' (with BIR's validation key, for e-submission) | 'report' (the module's error report)
+  download: (agent, period, file = 'validated') =>
+    downloadFile('/bir-validation/download', { ...validationParams(agent, period), file }, file === 'report' ? 'validation-report.TXT' : 'validated.DAT'),
+  // Any .DAT, e.g. one BIR Alphalist made: form, TIN and period come from its first line unless given.
+  upload: (file, extra = {}) => {
+    const body = new FormData()
+    body.append('file', file)
+    Object.entries(extra).forEach(([k, v]) => v !== undefined && v !== '' && body.append(k, v))
+    return data(api.post('/tools/bir-validate', body)).then((d) => d.validation)
+  },
+  uploadDownload: async (file, which, extra = {}) => {
+    const body = new FormData()
+    body.append('file', file)
+    body.append('download', which)
+    Object.entries(extra).forEach(([k, v]) => v !== undefined && v !== '' && body.append(k, v))
+    const res = await api.post('/tools/bir-validate', body, { responseType: 'blob' })
+    const name = res.headers['x-dat-filename'] || (which === 'report' ? 'validation-report.TXT' : 'validated.DAT')
+    const href = URL.createObjectURL(res.data)
+    const a = Object.assign(document.createElement('a'), { href, download: name })
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(href)
+  },
+}
+
+// ---------------------------------------------------------------- BIR filing status (every return and period of a year)
+export const filingApi = {
+  // -> { year, as_of, summary: { empty, has_lines, overdue, sent, changed }, returns: [{ code, label, title, group, cadence, due_rule, built_from,
+  //      periods: [{ key, label, quarter, month, return_period, expected, lines, income, tax_withheld, due_date, days_until_due,
+  //                  last_sent: { sent_at, rows_added } | null, last_changed_at, changed_since_send, status, link: { form, year, quarter? | month? } }] }] }
+  get: (agent, year) => data(api.get('/filing-status', { params: { withholding_agent_id: agent, year } })),
 }
 
 // ---------------------------------------------------------------- DAT tools

@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Alert, Badge, Button, Form, Modal, Table } from 'react-bootstrap'
+import { Alert, Badge, Button, Form, Modal, Spinner, Table } from 'react-bootstrap'
 import { alphalistApi } from '../../lib/api/alphalist'
 import { errorMessage } from '../../lib/api/client'
 import PageHeader from '../../components/PageHeader'
-import { agentName } from '../../components/AgentPicker'
+import { agentName, pad4, refreshAlphalist } from '../../components/AgentPicker'
+import { Loading, LoadError, SkeletonRows } from '../../components/Loading'
+import { confirmDialog } from '../../lib/confirm'
+import { toast } from '../../lib/toast'
+import useLoad from '../../lib/useLoad'
 
 /** Explorer-like popup over the server's own drives (the browser cannot see full C:\ paths). */
 function FolderBrowser({ onPick, onClose }) {
@@ -25,7 +29,7 @@ function FolderBrowser({ onPick, onClose }) {
         <Modal.Title className="fs-6">Browse folders on this PC</Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        {cur.loading && <div className="fp-sub">Loading…</div>}
+        {cur.loading && <Loading className="mb-3" />}
         {cur.error && (
           <Alert variant="danger" className="mb-0">
             {cur.error}
@@ -77,23 +81,27 @@ function FolderBrowser({ onPick, onClose }) {
 }
 
 export default function AlphalistPage() {
-  const [d, setD] = useState(null)
-  const [msg, setMsg] = useState(null)
-  const load = () => alphalistApi.overview().then(setD).catch((e) => setMsg({ variant: 'danger', text: errorMessage(e) }))
-  useEffect(() => { load() }, [])
+  const { data: d, loading, error: loadError, reload } = useLoad(() => alphalistApi.overview(), [])
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState('') // which action is waiting: 'restore:<name>' | 'remove' | 'check' | 'upload'
+  const fail = (e) => setError(errorMessage(e))
+  // Alphalist changed: this page and the top bar's badge both look again.
+  const changed = () => { reload(); refreshAlphalist() }
+  const act = async (what, fn) => {
+    setBusy(what); setError('')
+    try { await fn() } catch (e) { fail(e) } finally { setBusy('') }
+  }
 
   const restore = async (name) => {
-    if (!window.confirm(`Restore Alphalist's data from ${name}? This replaces its current data.`)) return
-    try { await alphalistApi.restore(name); setMsg({ variant: 'success', text: `Restored from ${name}.` }); load() }
-    catch (e) { setMsg({ variant: 'danger', text: errorMessage(e) }) }
+    if (!await confirmDialog(`Restore Alphalist's data from ${name}? This replaces its current data.`, { ok: 'Restore', variant: 'danger' })) return
+    act(`restore:${name}`, async () => { await alphalistApi.restore(name); toast(`Restored Alphalist's data from ${name}.`); changed() })
   }
   const s = d?.status
 
   // Alphalist holds one withholding agent; removing it (and its lines there) lets another agent be sent.
   const removeAgent = async () => {
-    if (!window.confirm(`Remove ${s.agent.name} (${s.agent.tin}-${s.agent.branch_code}) from BIR Alphalist, with all its lines there? A backup is taken first, so it can be restored.`)) return
-    try { const r = await alphalistApi.removeAgent(); setMsg({ variant: 'success', text: r.message }); load() }
-    catch (e) { setMsg({ variant: 'danger', text: errorMessage(e) }) }
+    if (!await confirmDialog(`Remove ${s.agent.name} (${s.agent.tin}-${pad4(s.agent.branch_code)}) from BIR Alphalist, with all its lines there? A backup is taken first, so it can be restored.`, { ok: 'Remove agent', variant: 'danger' })) return
+    act('remove', async () => { const r = await alphalistApi.removeAgent(); toast(r.message); changed() })
   }
 
   // Choose the Alphalist folder when it was not found (Desktop, moved install...).
@@ -103,13 +111,13 @@ export default function AlphalistPage() {
   const openChooser = () => { setFolder(s?.path || 'C:\\BIRALPHA74'); setChoosing(true) }
   const saveFolder = async (e) => {
     e.preventDefault()
-    setSaving(true)
+    setSaving(true); setError('')
     try {
       await alphalistApi.setPath(folder)
-      setMsg({ variant: 'success', text: `Using Alphalist folder ${folder}.` })
+      toast(`Using Alphalist folder ${folder}.`)
       setChoosing(false)
-      load()
-    } catch (err) { setMsg({ variant: 'danger', text: errorMessage(err) }) }
+      changed()
+    } catch (err) { fail(err) }
     finally { setSaving(false) }
   }
 
@@ -119,43 +127,46 @@ export default function AlphalistPage() {
   // Upload a .DAT into Alphalist: preview what it would do, then confirm.
   const [file, setFile] = useState(null)
   const [plan, setPlan] = useState(null)
-  const previewUpload = async (e) => {
+  const previewUpload = (e) => {
     e.preventDefault(); setPlan(null)
-    try { setPlan(await alphalistApi.uploadPreview(file)) } catch (err) { setMsg({ variant: 'danger', text: errorMessage(err) }) }
+    act('check', async () => setPlan(await alphalistApi.uploadPreview(file)))
   }
-  const doUpload = async () => {
-    try {
-      const r = await alphalistApi.upload(file)
-      setMsg({ variant: 'success', text: `${r.message} In Alphalist: ${r.open_in_alphalist}.` })
-      setPlan(null); setFile(null); load()
-    } catch (err) { setMsg({ variant: 'danger', text: errorMessage(err) }) }
-  }
+  const doUpload = () => act('upload', async () => {
+    const r = await alphalistApi.upload(file)
+    toast(`${r.message} In Alphalist: ${r.open_in_alphalist}.`)
+    setPlan(null); setFile(null); changed()
+  })
+  const spin = (what) => busy === what && <Spinner size="sm" aria-hidden />
 
   return (
     <>
-      <PageHeader title="BIR Alphalist" sub="Connection to the Alphalist Data Entry program on this PC, its backups, and send history." />
-      {msg && <Alert variant={msg.variant} dismissible onClose={() => setMsg(null)}>{msg.text}</Alert>}
+      <PageHeader title="BIR Alphalist" sub="Connection to the Alphalist Data Entry program on this PC, its backups, and send history.">
+        <Button variant="light" size="sm" disabled={loading} onClick={changed}>{loading && d && <Spinner size="sm" aria-hidden />} Check again</Button>
+      </PageHeader>
+      <LoadError error={loadError} onRetry={reload} />
+      {error && <Alert variant="danger" dismissible onClose={() => setError('')}>{error}</Alert>}
+      {!d && loading && <div className="fp-card p-3 mb-3"><Loading text="Looking for BIR Alphalist on this PC…" /></div>}
       {s && (
         <div className="fp-card p-3 mb-3">
           <div className="d-flex gap-3 align-items-center flex-wrap">
-            <strong>{s.path}</strong>
+            <strong className="text-break">{s.path}</strong>
             <Badge bg={s.found ? 'success' : 'danger'}>{s.found ? 'Found' : 'Not found'}</Badge>
             {!s.found && !choosing && <Button size="sm" className="btn-fp" onClick={openChooser}>Choose folder…</Button>}
             {s.found && <Badge bg={s.locked ? 'warning' : 'secondary'} text={s.locked ? 'dark' : undefined}>{s.locked ? 'Open (locked)' : 'Closed'}</Badge>}
-            {s.agent && <span className="fp-sub">Registered agent: {s.agent.name ?? s.agent.tin ?? JSON.stringify(s.agent)} ({s.agent.tin}-{s.agent.branch_code})</span>}
-            {s.agent && <Button size="sm" variant="outline-danger" disabled={s.locked} onClick={removeAgent}>Remove agent from Alphalist</Button>}
+            {s.agent && <span className="fp-sub">Registered agent: <strong>{s.agent.name ?? s.agent.tin}</strong> ({s.agent.tin}-{pad4(s.agent.branch_code)})</span>}
+            {s.agent && <Button size="sm" variant="outline-danger" disabled={s.locked || !!busy} onClick={removeAgent}>{spin('remove')} Remove agent from Alphalist</Button>}
           </div>
           {s.error && <Alert variant="warning" className="mt-3 mb-0">{s.error}</Alert>}
           {!s.found && choosing && (
             <Form onSubmit={saveFolder} className="mt-3">
-              <Form.Label className="small fw-semibold">Alphalist folder on this PC</Form.Label>
+              <Form.Label htmlFor="alphalist-folder" className="small fw-semibold">Alphalist folder on this PC</Form.Label>
               <div className="d-flex gap-2 flex-wrap">
-                <Form.Control value={folder} onChange={(e) => setFolder(e.target.value)} placeholder="C:\BIRALPHA74" disabled={saving} style={{ maxWidth: 420 }} />
+                <Form.Control id="alphalist-folder" value={folder} onChange={(e) => setFolder(e.target.value)} placeholder="C:\BIRALPHA74" disabled={saving} style={{ maxWidth: 420 }} aria-describedby="alphalist-folder-help" />
                 <Button variant="light" size="sm" disabled={saving} onClick={() => setBrowsing(true)}>Browse…</Button>
-                <Button type="submit" className="btn-fp" size="sm" disabled={saving || !folder.trim()}>Use this folder</Button>
+                <Button type="submit" className="btn-fp" size="sm" disabled={saving || !folder.trim()}>{saving && <Spinner size="sm" aria-hidden />} Use this folder</Button>
                 <Button variant="light" size="sm" disabled={saving} onClick={() => setChoosing(false)}>Cancel</Button>
               </div>
-              <div className="fp-sub mt-2">Example: <code>C:\BIRALPHA74</code> or <code>C:\Users\you\Desktop\BIRALPHA74</code>. Checked before anything is saved.</div>
+              <div id="alphalist-folder-help" className="fp-sub mt-2">Example: <code>C:\BIRALPHA74</code> or <code>C:\Users\you\Desktop\BIRALPHA74</code>. Checked before anything is saved.</div>
             </Form>
           )}
         </div>
@@ -169,11 +180,11 @@ export default function AlphalistPage() {
       <h5 className="mt-4">Upload a DAT into Alphalist</h5>
       <div className="fp-card p-3 mb-3">
         <Form onSubmit={previewUpload} className="d-flex gap-3 align-items-end flex-wrap">
-          <div>
+          <Form.Group controlId="alphalist-upload">
             <Form.Label className="small fw-semibold">QAP 1601-EQ / 1601-FQ, 1604-F or 1604-E file</Form.Label>
             <Form.Control type="file" accept=".dat,.DAT" onChange={(e) => { setFile(e.target.files[0] || null); setPlan(null) }} />
-          </div>
-          <Button type="submit" variant="light" disabled={!file}>Check file</Button>
+          </Form.Group>
+          <Button type="submit" variant="light" disabled={!file || !!busy}>{spin('check')} Check file</Button>
         </Form>
         <div className="fp-sub mt-2">Only that agent, form and period are replaced in Alphalist; its other data is kept. A backup is taken first.</div>
         {plan && (
@@ -183,32 +194,37 @@ export default function AlphalistPage() {
             {plan.agent_action === 'register' && <div>The agent will be registered in Alphalist.</div>}
             {plan.agent_action === 'conflict' && <div>Alphalist is registered to another agent ({plan.registered_agent?.name}); upload is blocked.</div>}
             {plan.warnings?.length > 0 && <ul className="mb-0">{plan.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>}
-            {plan.can_upload && <Button variant="dark" size="sm" className="mt-2" onClick={doUpload}>Upload into Alphalist</Button>}
+            {plan.can_upload && <Button variant="dark" size="sm" className="mt-2" disabled={!!busy} onClick={doUpload}>{spin('upload')} Upload into Alphalist</Button>}
           </Alert>
         )}
       </div>
 
       <h5 className="mt-4">Backups</h5>
       <div className="fp-card mb-4">
-        <Table responsive className="mb-0 align-middle">
-          <thead><tr><th>Backup</th><th>Created</th><th>Actions</th></tr></thead>
+        <Table responsive className="mb-0 align-middle fp-stack" aria-busy={loading}>
+          <thead><tr><th>Backup</th><th>Created</th><th className="fp-actions"><span className="visually-hidden">Actions</span></th></tr></thead>
           <tbody>
-            {!d?.backups.length && <tr><td colSpan={3} className="fp-empty">No backups yet.</td></tr>}
+            {!d && loading && <SkeletonRows cols={3} />}
+            {d && !d.backups.length && <tr><td colSpan={3} className="fp-empty">No backups yet.</td></tr>}
             {d?.backups.map((b) => (
-              <tr key={b.name}><td>{b.name}</td><td>{new Date(b.created * 1000).toLocaleString()}</td>
-                <td><Button size="sm" variant="outline-danger" onClick={() => restore(b.name)}>Restore</Button></td></tr>
+              <tr key={b.name}><td className="text-break">{b.name}</td><td className="text-nowrap">{new Date(b.created * 1000).toLocaleString()}</td>
+                <td className="fp-actions"><Button size="sm" variant="outline-danger" disabled={!!busy} onClick={() => restore(b.name)}>{spin(`restore:${b.name}`)} Restore</Button></td></tr>
             ))}
           </tbody>
         </Table>
       </div>
       <h5>Send history</h5>
       <div className="fp-card">
-        <Table responsive className="mb-0">
-          <thead><tr><th>When</th><th>Agent</th><th>Form</th><th>Period</th><th>Added</th><th>Replaced</th></tr></thead>
+        <Table responsive className="mb-0 align-middle fp-stack" aria-busy={loading}>
+          <thead><tr><th>When</th><th>Agent</th><th>Form</th><th className="fp-hide-narrow">Period</th><th className="fp-num">Added</th><th className="fp-num">Replaced</th></tr></thead>
           <tbody>
-            {!d?.syncs.length && <tr><td colSpan={6} className="fp-empty">Nothing sent yet.</td></tr>}
+            {!d && loading && <SkeletonRows cols={6} hide={[3]} />}
+            {d && !d.syncs.length && <tr><td colSpan={6} className="fp-empty">Nothing sent yet.</td></tr>}
             {d?.syncs.map((x) => (
-              <tr key={x.id}><td>{new Date(x.created_at).toLocaleString()}</td><td>{x.agent ? agentName(x.agent) : ''}</td><td>{x.form_type}</td><td>{String(x.return_period).slice(0, 10)}</td><td>{x.rows_added}</td><td>{x.rows_replaced}</td></tr>
+              <tr key={x.id}>
+                <td className="text-nowrap">{new Date(x.created_at).toLocaleString()}</td><td className="fp-name">{x.agent ? agentName(x.agent) : ''}</td><td>{x.form_type}</td>
+                <td className="fp-hide-narrow text-nowrap">{String(x.return_period).slice(0, 10)}</td><td className="fp-num">{x.rows_added}</td><td className="fp-num">{x.rows_replaced}</td>
+              </tr>
             ))}
           </tbody>
         </Table>

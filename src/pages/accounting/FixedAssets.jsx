@@ -49,8 +49,8 @@ const FixedAssets = () => {
                 <td className="fw-semibold"><Package size={14} className="me-2 text-muted" />{a.name}</td>
                 <td>{a.asset_code}</td>
                 <td>{a.purchase_date ? new Date(a.purchase_date).toLocaleDateString() : '—'}</td>
-                <td>${parseFloat(a.purchase_cost || 0).toLocaleString()}</td>
-                <td>${parseFloat(a.current_value || 0).toLocaleString()}</td>
+                <td>₱{parseFloat(a.purchase_cost || 0).toLocaleString()}</td>
+                <td>₱{parseFloat(a.current_value || 0).toLocaleString()}</td>
                 <td>{a.depreciation_method}</td>
                 <td>{a.useful_life} yrs</td>
                 <td><Badge bg={a.status === 'active' ? 'success' : a.status === 'sold' ? 'info' : 'secondary'}>{a.status}</Badge></td>

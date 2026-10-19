@@ -77,8 +77,21 @@ body {
 .fp-children {
   margin: 4px 12px 4px 0;
 }
-.fp-children.is-active {
-  border-left: 3px solid var(--fp-accent);
+/* the current page: one item only (Sidebar.jsx picks it) */
+.fp-item.active,
+.fp-child.active {
+  background: var(--fp-sidebar-active);
+  color: #fff;
+  box-shadow: inset 3px 0 0 var(--fp-accent);
+}
+.fp-item.active {
+  font-weight: 600;
+  width: calc(100% - 12px);
+  border-radius: 0 8px 8px 0;
+}
+/* a group holding the current page: its title stays bright */
+.fp-item.has-active {
+  color: #fff;
 }
 .fp-child {
   display: flex;
@@ -93,14 +106,15 @@ body {
 .fp-child:hover {
   color: #fff;
 }
-.fp-children.is-active .fp-child {
-  background: var(--fp-sidebar-active);
-  color: #fff;
-  margin-bottom: 4px;
-}
+
 .fp-main {
   flex: 1;
   min-width: 0;
+}
+.fp-topbar-wrap {
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 .fp-topbar {
   height: 64px;
@@ -109,10 +123,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
   padding: 0 24px;
-  position: sticky;
-  top: 0;
-  z-index: 10;
 }
 .fp-search {
   background: var(--fp-bg);
@@ -279,4 +291,369 @@ body {
   color: rgba(255, 255, 255, 0.75);
   margin-bottom: 2rem;
   max-width: 500px;
+}
+
+/* BIR / Alphalist screens: company switcher, warnings, toasts, money columns, narrow screens */
+.min-w-0 {
+  min-width: 0;
+}
+.fp-agent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.fp-agent .form-select {
+  width: 300px;
+  max-width: 100%;
+  min-width: 140px;
+}
+.fp-agent-badge {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.fp-mismatch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 24px;
+  background: #fff7e6;
+  border-bottom: 1px solid #f5d38a;
+  color: #7a4b00;
+  font-size: 0.88rem;
+}
+.fp-mismatch-text {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+.fp-toast {
+  border-left: 4px solid var(--fp-accent);
+  background: #fff;
+}
+/* Amounts: right-aligned, digits line up */
+.fp-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.fp-card td,
+.fp-table td {
+  vertical-align: middle;
+}
+/* keeps absolutely positioned bits (visually-hidden header text) inside the table's own scroll box */
+.table-responsive {
+  position: relative;
+}
+.fp-tin {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.fp-name {
+  min-width: 160px;
+}
+.fp-actions {
+  white-space: nowrap;
+  text-align: right;
+  width: 1%;
+}
+.fp-table-loading {
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+/* FormModal sections and the live summary beside them */
+.fp-modal-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.fp-fieldset + .fp-fieldset {
+  margin-top: 1.5rem;
+}
+.fp-fieldset legend {
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-bottom: 1px solid #e5e9f0;
+  padding-bottom: 6px;
+  margin-bottom: 12px;
+}
+.fp-subhead {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fp-muted);
+  font-weight: 600;
+}
+.fp-summary {
+  background: var(--fp-bg);
+  border-radius: 10px;
+  padding: 16px;
+}
+@media (min-width: 992px) {
+  .fp-summary {
+    position: sticky;
+    top: 0;
+  }
+}
+.fp-summary dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 12px;
+  margin: 0;
+}
+.fp-summary dt {
+  font-weight: 400;
+  color: #475569;
+}
+.fp-summary dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.fp-summary .fp-total {
+  border-top: 1px solid #d8dee8;
+  padding-top: 6px;
+  font-weight: 600;
+}
+.fp-nav-toggle {
+  display: none;
+}
+.fp-nav-backdrop {
+  display: none;
+}
+/* Narrow screens: sidebar becomes a slide-in menu, secondary table columns drop out */
+@media (max-width: 991.98px) {
+  .fp-nav-toggle {
+    display: inline-flex;
+    flex-shrink: 0;
+  }
+  .fp-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 1040;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+  }
+  .fp-nav-open .fp-sidebar {
+    transform: none;
+    box-shadow: 0 0 24px rgba(15, 23, 42, 0.35);
+  }
+  .fp-nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.4);
+  }
+  .fp-search {
+    display: none;
+  }
+  .fp-topbar {
+    padding: 0 12px;
+  }
+  .fp-content {
+    padding: 16px 12px;
+  }
+  .fp-mismatch {
+    padding: 10px 12px;
+  }
+  .fp-hide-narrow {
+    display: none;
+  }
+}
+@media (max-width: 575.98px) {
+  .fp-agent .form-select {
+    width: 100%;
+  }
+  .fp-agent-badge {
+    max-width: 120px;
+  }
+  .fp-title {
+    font-size: 1.5rem;
+  }
+}
+
+/* Phones: list tables (class fp-stack) become one card per row, "label: value" per cell.
+   Labels come from the column headers (src/lib/stackTables.js). */
+@media (max-width: 575.98px) {
+  .table-responsive:has(> table.fp-stack) {
+    overflow-x: visible;
+  }
+  table.fp-stack thead {
+    display: none;
+  }
+  table.fp-stack,
+  table.fp-stack tbody,
+  table.fp-stack tr {
+    display: block;
+    width: 100%;
+  }
+  table.fp-stack tr {
+    padding: 0.6rem 0.85rem;
+    border-bottom: 1px solid #e9eef5;
+  }
+  table.fp-stack tr:last-child {
+    border-bottom: 0;
+  }
+  table.fp-stack td {
+    display: flex;
+    width: 100% !important;
+    max-width: none !important;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.75rem;
+    padding: 0.18rem 0 !important;
+    border: 0 !important;
+    text-align: right;
+    white-space: normal;
+    word-break: break-word;
+  }
+  table.fp-stack td::before {
+    content: attr(data-label);
+    flex: 0 0 38%;
+    text-align: left;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #64748b;
+  }
+  /* the name is the card's title: first, full width, no label, laid out as on desktop */
+  table.fp-stack tr {
+    display: flex;
+    flex-direction: column;
+  }
+  table.fp-stack td.fp-name {
+    order: -1;
+    display: block;
+    text-align: left;
+    font-size: 0.95rem;
+    font-weight: 600;
+    padding-bottom: 0.3rem !important;
+  }
+  table.fp-stack td.fp-name::before {
+    display: none;
+  }
+  /* the TIN shown under a name on narrow tables already has its own line on the card */
+  table.fp-stack td.fp-name .fp-tin {
+    display: none !important;
+  }
+  /* no header (empty-state rows, spanning cells): full width, centered */
+  table.fp-stack td[data-label='']::before,
+  table.fp-stack td:not([data-label])::before {
+    display: none;
+  }
+  table.fp-stack td[data-label=''],
+  table.fp-stack td[colspan] {
+    justify-content: center;
+    text-align: center;
+  }
+  /* the running "#" adds nothing on a card */
+  table.fp-stack td[data-label='#'] {
+    display: none !important;
+  }
+  /* actions: buttons on their own line, right-aligned */
+  table.fp-stack td[data-label='Actions'] {
+    justify-content: flex-end;
+    padding-top: 0.45rem !important;
+  }
+  table.fp-stack td[data-label='Actions']::before {
+    display: none;
+  }
+  /* columns hidden on narrow screens elsewhere come back on the card */
+  table.fp-stack .fp-hide-narrow {
+    display: flex !important;
+  }
+  /* dashboard: stat cards two per row */
+  .stat-card {
+    padding: 0.9rem;
+  }
+  .stat-card .stat-value {
+    font-size: 1.15rem;
+  }
+}
+
+/* "With lines in 2026:" chips above the BIR line tables (components/PeriodsWithLines.jsx) */
+.fp-periods {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.fp-periods-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #64748b;
+}
+.fp-period-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  cursor: pointer;
+}
+.fp-period-chip:hover {
+  border-color: #94a3b8;
+}
+.fp-period-chip.is-current {
+  border-color: var(--fp-accent);
+  box-shadow: 0 0 0 2px rgba(0, 184, 148, 0.18);
+}
+.fp-period-chip .badge {
+  font-weight: 500;
+}
+
+/* BIR validation result above a return's lines (components/BirValidation.jsx) */
+.fp-validation {
+  border-left: 4px solid #cbd5e1;
+}
+.fp-validation.is-passed {
+  border-left-color: #198754;
+}
+.fp-validation.is-failed {
+  border-left-color: #dc3545;
+}
+
+/* Server-paged lists (components/Pager.jsx) */
+.fp-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.6rem 0.85rem;
+  border-top: 1px solid #e9eef5;
+  background: #fff;
+}
+.fp-list-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid #e9eef5;
+  background: #fff;
+}
+/* Type-to-search supplier / customer picker (components/PartnerPicker.jsx) */
+.fp-picker {
+  position: relative;
+}
+.fp-picker-list {
+  position: absolute;
+  z-index: 1060;
+  left: 0;
+  right: 0;
+  top: calc(100% + 2px);
+  max-height: 260px;
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
 }

@@ -49,8 +49,8 @@ const Products = () => {
                 <td className="fw-semibold"><Boxes size={14} className="me-2 text-muted" />{p.name}</td>
                 <td><Badge bg="light" text="dark" className="border">{p.sku}</Badge></td>
                 <td>{p.category}</td>
-                <td className="fw-semibold text-success">${parseFloat(p.price || 0).toLocaleString()}</td>
-                <td>${parseFloat(p.cost || 0).toLocaleString()}</td>
+                <td className="fw-semibold text-success">₱{parseFloat(p.price || 0).toLocaleString()}</td>
+                <td>₱{parseFloat(p.cost || 0).toLocaleString()}</td>
                 <td><Badge bg={(p.stock_quantity ?? 0) > 10 ? 'success' : (p.stock_quantity ?? 0) > 0 ? 'warning' : 'danger'}>{p.stock_quantity ?? 0}</Badge></td>
                 <td>
                   <Button variant="link" className="p-1" onClick={() => handleEdit(p)}><Pencil size={16} /></Button>

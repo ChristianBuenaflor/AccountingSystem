@@ -9,42 +9,52 @@ import {
 } from 'recharts'
 import { useCollection } from '../../lib/store/useCollection.js'
 import { seeds } from '../../lib/store/db.js'
+import { useBooks } from '../../lib/api/useBooks.js'
 
 const Dashboard = () => {
-  const { rows: sales } = useCollection('sales', seeds.sales)
-  const { rows: purchases } = useCollection('purchases', seeds.purchases)
-  const { rows: contacts } = useCollection('contacts', seeds.contacts)
+  const { invoices, bills, recentInvoices, customerCount, supplierCount, error } = useBooks()
   const { rows: products } = useCollection('products', seeds.products)
   const { rows: events } = useCollection('events', seeds.events)
 
-  const totalSales = sales.reduce((s, r) => s + (parseFloat(r.total_amount) || 0), 0)
-  const totalPurchases = purchases.reduce((s, r) => s + (parseFloat(r.total_amount) || 0), 0)
+  const sum = (rows) => rows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0)
+  const totalSales = sum(invoices)
+  const totalPurchases = sum(bills)
   const stats = {
     totalSales, totalPurchases,
-    totalContacts: contacts.length, totalProducts: products.length,
-    recentSales: [...sales].reverse().slice(0, 5),
+    totalContacts: customerCount + supplierCount, totalProducts: products.length,
+    recentSales: recentInvoices,
     upcomingEvents: events.slice(0, 5),
   }
 
-  const chartData = [
-    { name: 'Jan', revenue: 42000, expense: 28000 },
-    { name: 'Feb', revenue: 38000, expense: 25000 },
-    { name: 'Mar', revenue: 55000, expense: 32000 },
-    { name: 'Apr', revenue: 48000, expense: 29000 },
-    { name: 'May', revenue: 62000, expense: 34000 },
-    { name: 'Jun', revenue: 58000, expense: 31000 },
-  ]
+  // The last six months, this one included.
+  const now = new Date()
+  const chartData = [5, 4, 3, 2, 1, 0].map((back) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - back, 1)
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    const inMonth = (rows) => sum(rows.filter((r) => String(r.date).startsWith(key)))
+    return { name: d.toLocaleDateString('en-US', { month: 'short' }), revenue: inMonth(invoices), expense: inMonth(bills) }
+  })
 
   const pieData = [
     { name: 'Revenue', value: totalSales || 65, color: '#00b894' },
     { name: 'Expenses', value: totalPurchases || 35, color: '#e74c3c' },
   ]
 
+  // Latest month with entries against the month before it (a month still empty would read -100%).
+  const change = (key) => {
+    const i = chartData.findLastIndex((m) => m[key] > 0)
+    if (i < 1 || !chartData[i - 1][key]) return null
+    const [prev, curr] = [chartData[i - 1], chartData[i]]
+    const pct = ((curr[key] - prev[key]) / prev[key]) * 100
+    return { text: `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`, up: pct >= 0, period: `${curr.name} vs ${prev.name}` }
+  }
+  const peso = (v) => `₱${v.toLocaleString('en-PH', { maximumFractionDigits: 0 })}`
+
   const statCards = [
-    { label: 'Total Revenue', value: `$${totalSales.toLocaleString()}`, icon: DollarSign, color: '#00b894', bg: '#f0fdf9', change: '+12.5%' },
-    { label: 'Total Expenses', value: `$${totalPurchases.toLocaleString()}`, icon: CreditCard, color: '#e74c3c', bg: '#fef2f2', change: '-3.2%' },
-    { label: 'Contacts', value: stats.totalContacts || '—', icon: Users, color: '#3498db', bg: '#eff6ff', change: '+5.1%' },
-    { label: 'Products', value: stats.totalProducts || '—', icon: Boxes, color: '#f39c12', bg: '#fffbeb', change: '+8.7%' },
+    { label: 'Total Revenue', value: peso(totalSales), icon: DollarSign, color: '#00b894', bg: '#f0fdf9', change: change('revenue') },
+    { label: 'Total Expenses', value: peso(totalPurchases), icon: CreditCard, color: '#e74c3c', bg: '#fef2f2', change: change('expense') },
+    { label: 'Contacts', value: stats.totalContacts || '—', icon: Users, color: '#3498db', bg: '#eff6ff', change: null },
+    { label: 'Products', value: stats.totalProducts || '—', icon: Boxes, color: '#f39c12', bg: '#fffbeb', change: null },
   ]
 
   return (
@@ -56,20 +66,23 @@ const Dashboard = () => {
         </div>
         <span className="badge bg-light text-dark border">{new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
       </div>
+      {error && <div className="alert alert-danger py-2" style={{ fontSize: '0.85rem' }}>Could not load invoices and bills: {error}</div>}
 
       {/* Stats */}
       <div className="row g-3 mb-4">
         {statCards.map((s, i) => (
-          <div key={i} className="col-md-6 col-lg-3">
+          <div key={i} className="col-6 col-lg-3">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} className="stat-card">
               <div className="stat-icon" style={{ background: s.bg, color: s.color }}><s.icon size={20} /></div>
               <div className="stat-value">{s.value}</div>
-              <div className="d-flex align-items-center gap-2">
+              <div className="d-flex align-items-center flex-wrap gap-1 column-gap-2">
                 <span className="stat-label">{s.label}</span>
-                <span style={{ fontSize: '0.75rem', color: s.change.startsWith('+') ? '#00b894' : '#e74c3c' }} className="d-flex align-items-center gap-1">
-                  {s.change.startsWith('+') ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                  {s.change}
-                </span>
+                {s.change && (
+                  <span title={s.change.period} style={{ fontSize: '0.75rem', color: s.change.up ? '#00b894' : '#e74c3c' }} className="d-flex align-items-center gap-1">
+                    {s.change.up ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                    {s.change.text} <span className="text-muted">{s.change.period}</span>
+                  </span>
+                )}
               </div>
             </motion.div>
           </div>
@@ -95,7 +108,7 @@ const Dashboard = () => {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="name" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v/1000}k`} />
+                <YAxis tick={{ fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={v => `₱${v/1000}k`} />
                 <Tooltip contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
                 <Area type="monotone" dataKey="revenue" stroke="#00b894" strokeWidth={2} fill="url(#colorRev)" />
                 <Area type="monotone" dataKey="expense" stroke="#e74c3c" strokeWidth={2} fill="url(#colorExp)" />
@@ -134,10 +147,10 @@ const Dashboard = () => {
             {stats.recentSales?.length ? stats.recentSales.slice(0, 5).map((s, i) => (
               <div key={i} className="d-flex justify-content-between align-items-center py-2" style={{ borderBottom: i < 4 ? '1px solid #f1f5f9' : 'none' }}>
                 <div>
-                  <div className="fw-semibold" style={{ fontSize: '0.85rem' }}>{s.invoice_number}</div>
-                  <div className="text-muted" style={{ fontSize: '0.75rem' }}>{s.date ? new Date(s.date).toLocaleDateString() : '—'}</div>
+                  <div className="fw-semibold" style={{ fontSize: '0.85rem' }}>{s.number}</div>
+                  <div className="text-muted" style={{ fontSize: '0.75rem' }}>{s.date ? new Date(s.date).toLocaleDateString() : '—'}{s.customer?.name ? ` · ${s.customer.name}` : ''}</div>
                 </div>
-                <span className="fw-bold" style={{ fontSize: '0.85rem' }}>${parseFloat(s.total_amount || 0).toLocaleString()}</span>
+                <span className="fw-bold" style={{ fontSize: '0.85rem' }}>₱{parseFloat(s.amount || 0).toLocaleString()}</span>
               </div>
             )) : <p className="text-muted text-center py-3">No recent sales</p>}
           </div>

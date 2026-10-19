@@ -21,9 +21,9 @@ const Setup = () => {
     phone: '+1-555-0199',
     email: 'admin@financepro.com',
     website: 'https://financepro.com',
-    currency: 'USD',
+    currency: 'PHP',
     fiscalYearStart: '01-01',
-    timezone: 'America/New_York',
+    timezone: 'Asia/Manila',
     baseLanguage: 'en',
   })))
   useEffect(() => { save('setup_company', company) }, [company])
@@ -202,11 +202,11 @@ const Setup = () => {
               <Col md={4}><Form.Group><Form.Label>State / Province</Form.Label><Form.Control value={company.state} onChange={e => setCompany({ ...company, state: e.target.value })} /></Form.Group></Col>
               <Col md={4}><Form.Group><Form.Label>ZIP / Postal</Form.Label><Form.Control value={company.zip} onChange={e => setCompany({ ...company, zip: e.target.value })} /></Form.Group></Col>
               <Col md={6}><Form.Group><Form.Label>Country</Form.Label><Form.Select value={company.country} onChange={e => setCompany({ ...company, country: e.target.value })}><option>USA</option><option>UK</option><option>Germany</option><option>France</option><option>Canada</option><option>Australia</option></Form.Select></Form.Group></Col>
-              <Col md={6}><Form.Group><Form.Label>Base Currency</Form.Label><Form.Select value={company.currency} onChange={e => setCompany({ ...company, currency: e.target.value })}><option>USD</option><option>EUR</option><option>GBP</option><option>CAD</option><option>AUD</option></Form.Select></Form.Group></Col>
+              <Col md={6}><Form.Group><Form.Label>Base Currency</Form.Label><Form.Select value={company.currency} onChange={e => setCompany({ ...company, currency: e.target.value })}><option>PHP</option><option>USD</option><option>EUR</option><option>GBP</option><option>CAD</option><option>AUD</option></Form.Select></Form.Group></Col>
               <Col md={6}><Form.Group><Form.Label>Phone</Form.Label><Form.Control value={company.phone} onChange={e => setCompany({ ...company, phone: e.target.value })} /></Form.Group></Col>
               <Col md={6}><Form.Group><Form.Label>Email</Form.Label><Form.Control type="email" value={company.email} onChange={e => setCompany({ ...company, email: e.target.value })} /></Form.Group></Col>
               <Col md={6}><Form.Group><Form.Label>Website</Form.Label><Form.Control value={company.website} onChange={e => setCompany({ ...company, website: e.target.value })} /></Form.Group></Col>
-              <Col md={6}><Form.Group><Form.Label>Timezone</Form.Label><Form.Select value={company.timezone} onChange={e => setCompany({ ...company, timezone: e.target.value })}><option>America/New_York</option><option>America/Chicago</option><option>America/Los_Angeles</option><option>Europe/London</option><option>Europe/Berlin</option><option>Asia/Tokyo</option></Form.Select></Form.Group></Col>
+              <Col md={6}><Form.Group><Form.Label>Timezone</Form.Label><Form.Select value={company.timezone} onChange={e => setCompany({ ...company, timezone: e.target.value })}><option>Asia/Manila</option><option>America/New_York</option><option>America/Chicago</option><option>America/Los_Angeles</option><option>Europe/London</option><option>Europe/Berlin</option><option>Asia/Tokyo</option></Form.Select></Form.Group></Col>
             </Row>
           </Card>
         </Tab>
@@ -227,7 +227,7 @@ const Setup = () => {
                     <td className="fw-semibold font-monospace">{a.code}</td>
                     <td className="fw-medium">{a.name}</td>
                     <td><Badge bg={a.type === 'Asset' ? 'success' : a.type === 'Liability' ? 'danger' : a.type === 'Equity' ? 'info' : a.type === 'Revenue' ? 'primary' : 'warning'} text={a.type === 'Expense' ? 'dark' : undefined}>{a.type}</Badge></td>
-                    <td className="text-end fw-semibold">${a.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td className="text-end fw-semibold">₱{a.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                     <td>
                       <Button variant="link" className="p-1" onClick={() => handleEditAccount(a)}><Pencil size={14} /></Button>
                       <Button variant="link" className="p-1 text-danger" onClick={() => handleDeleteAccount(a.id)}><Trash2 size={14} /></Button>
@@ -255,7 +255,7 @@ const Setup = () => {
                       <div>
                         <div className="fw-bold">{b.name}</div>
                         <div className="text-muted" style={{ fontSize: '0.8rem' }}>{b.bankName} • {b.accountNumber} • {b.currency}</div>
-                        <div className="fw-bold mt-2" style={{ fontSize: '1.1rem', color: b.active ? '#1e3a5f' : '#718096' }}>${b.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                        <div className="fw-bold mt-2" style={{ fontSize: '1.1rem', color: b.active ? '#1e3a5f' : '#718096' }}>₱{b.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                       </div>
                       <div className="d-flex gap-1">
                         <Button variant="link" className="p-1" onClick={() => handleEditBank(b)}><Pencil size={14} /></Button>
@@ -377,7 +377,7 @@ const Setup = () => {
               <Col md={6}><Form.Group><Form.Label>Account Name</Form.Label><Form.Control required value={bankForm.name} onChange={e => setBankForm({ ...bankForm, name: e.target.value })} /></Form.Group></Col>
               <Col md={6}><Form.Group><Form.Label>Bank Name</Form.Label><Form.Control required value={bankForm.bankName} onChange={e => setBankForm({ ...bankForm, bankName: e.target.value })} /></Form.Group></Col>
               <Col md={6}><Form.Group><Form.Label>Account Number</Form.Label><Form.Control required value={bankForm.accountNumber} onChange={e => setBankForm({ ...bankForm, accountNumber: e.target.value })} /></Form.Group></Col>
-              <Col md={6}><Form.Group><Form.Label>Currency</Form.Label><Form.Select value={bankForm.currency} onChange={e => setBankForm({ ...bankForm, currency: e.target.value })}><option>USD</option><option>EUR</option><option>GBP</option></Form.Select></Form.Group></Col>
+              <Col md={6}><Form.Group><Form.Label>Currency</Form.Label><Form.Select value={bankForm.currency} onChange={e => setBankForm({ ...bankForm, currency: e.target.value })}><option>PHP</option><option>USD</option><option>EUR</option><option>GBP</option></Form.Select></Form.Group></Col>
               <Col md={6}><Form.Group><Form.Label>Balance</Form.Label><Form.Control type="number" step="0.01" value={bankForm.balance} onChange={e => setBankForm({ ...bankForm, balance: e.target.value })} /></Form.Group></Col>
               <Col md={6}><Form.Group><Form.Check type="switch" label="Active" className="mt-4" checked={bankForm.active} onChange={e => setBankForm({ ...bankForm, active: e.target.checked })} /></Form.Group></Col>
             </div>

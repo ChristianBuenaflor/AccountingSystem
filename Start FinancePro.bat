@@ -4,7 +4,9 @@ rem Starts alphalist-api (port 8791) if it is not running, then FinancePro (http
 rem Close the two windows to stop them.
 cd /d "%~dp0"
 
-set "API=%~dp0..\..\alphalist-api"
+rem alphalist-api sits next to this folder (DAT\AccountingSystem + DAT\alphalist-api), or one level up.
+set "API=%~dp0..\alphalist-api"
+if not exist "%API%\Start Alphalist API.bat" set "API=%~dp0..\..\alphalist-api"
 netstat -ano | findstr /R /C:":8791 .*LISTENING" >nul
 if errorlevel 1 (
   if exist "%API%\Start Alphalist API.bat" (
